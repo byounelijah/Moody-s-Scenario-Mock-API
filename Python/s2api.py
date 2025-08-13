@@ -25,19 +25,9 @@ class BaseAPI:
         self._debug = debug
         
     def get_oauth_token(self):
-        access_key = self._acc_key
-        private_key = self._enc_key
-        url = f'{self._base_uri}/oauth2/token'
-        head = {'Content-Type':'application/x-www-form-urlencoded'}
-        data = f'client_id={access_key}&client_secret={private_key}&grant_type=client_credentials'
-        r = requests.post(url=url,headers=head,data=data,proxies=self._proxies)
-        status = r.status_code
-        response = r.text
-        jobj = json.loads(response)
-        if status == 200:
-            return f'{jobj["token_type"]} {jobj["access_token"]}'
-        else:
-            raise Exception(f'Error - Status : {status}, Msg: {response}')
+    # MOCK: return a dummy token without calling Moody's auth server
+        return "mocked-token"
+        
             
     def get_hmac_header(self):
         timeStamp = datetime.datetime.strftime(
@@ -47,59 +37,77 @@ class BaseAPI:
         head = {'AccessKeyId':self._acc_key,'Signature':signature.hexdigest(),
                 'Content-Type':'application/json','timestamp':timeStamp}
         return head
+    
+    def request(self, method: str, url: str, payload={}, max_tries: int = 5):
+        print(f"Mocked request: {method} {url}")
+        # Return dummy data based on the URL
+        if "project" in url and method.lower() == "get":
+            return [
+            {"id": "proj1", "alias": "baseline", "title": "Baseline Scenario"},
+            {"id": "proj2", "alias": "adverse", "title": "Adverse Scenario"}
+            ]
+        
+        if "base-scenario" in url and method.lower() == "get":
+            return {
+                "id": "base1",
+                "title": "Base Scenario",
+                "description": "Sample description",
+                "alias": "baseline"
+            }
+        if "scenario" in url and method.lower() == "get":
+            return [
+                {"id": "scen1", "name": "Baseline", "projectId": "proj1"},
+                {"id": "scen2", "name": "Adverse", "projectId": "proj1"}
+            ]
+        if "series" in url and method.lower() == "get":
+            return [
+                {"date": "2025-01-01", "value": 100},
+                {"date": "2025-02-01", "value": 97},
+                {"date": "2025-03-01", "value": 105}
+            ]
+        if "search/count" in url and method.lower() == "post":
+            return 5
+        if "search" in url and method.lower() == "post":
+            return [
+            {"variableId": "FINANCIAL_HEALTH"},
+            {"variableId": "UNRATE_US"},
+            {"variableId": "CPI_US"},
+            {"variableId": "FEDFUNDS_US"},
+            ]
+        if "data-series" in url and method.lower() == "post":
+            return [
+        {
+            "status": "OK",
+            "mnemonic": "FINANCIAL_HEALTH",
+            "description": "Gross Domestic Product",
+            "geoCode": "US",
+            "observedAttribute": "A",
+            "lastHistory": "2025Q1",
 
-    def request(self, method:str, url:str, payload={}, max_tries:int=5):
-        status = 0
-        tries = 0
-        ret = {}
-        if self._oauth:
-            if self._token == 'bearer None':
-                self._token = self.get_oauth_token()
-        while (not ((status == 200) or ((status == 304) and (method.lower().strip() == "put")))) and (tries < max_tries+1):
-            if self._oauth:
-                head = {'Authorization':self._token}
-            else:
-                head = self.get_hmac_header()
-            head['Content-Type'] = 'application/json'
-            head['Accept'] = 'application/json'
-            if method.lower().strip() == "get":
-                r = requests.get(url=url,headers=head,proxies=self._proxies)
-            elif method.lower().strip() == "delete":
-                r = requests.delete(url=url,headers=head,proxies=self._proxies)
-            elif method.lower().strip() == "post": 
-                if type(payload) is list or type(payload) is dict:
-                    r = requests.post(url=url,headers=head,json=payload,proxies=self._proxies)
-                else:
-                    r = requests.post(url=url,headers=head,data=payload,proxies=self._proxies)
-            elif method.lower().strip() == "put": 
-                if type(payload) is list or type(payload) is dict:
-                    r = requests.put(url=url,headers=head,json=payload,proxies=self._proxies)
-                else:
-                    r = requests.put(url=url,headers=head,data=payload,proxies=self._proxies)
-            else:
-                print(f'Error - method {method} not recognized')
-                return {}
-            tries = tries + 1
-            status = r.status_code
-            response = r.text
-            if status == 429:
-                print("Too many requests, wait 10 seconds and try again...")
-                time.sleep(10)
-            elif self._oauth and (status == 401):
-                print(self._token,status,response)
-                print("Get a new oauth token")
-                self._token = self.get_oauth_token()
-            elif (status == 200) or ((status == 304) and (method.lower().strip() == "put")):
-                if len(response)>0:
-                    ret = json.loads(response)
-                else:
-                    ret = response
-            else:
-                print(f'Error - Status : {status}, Msg : {response}')
-                print(f'   URL: {url}')
-            if self._debug:
-                print(f'{status} : {url}')
-        return ret
+            
+            "data": {
+                "freqCode": 172,
+                "startDate": "2025Q1",
+                "periods": 3,
+                "data": [100, 102, 105]
+            }
+        },
+        {
+            "status": "OK",
+            "mnemonic": "UNRATE_US",
+            "description": "Unemployment Rate",
+            "geoCode": "US",
+            "observedAttribute": "A",
+            "lastHistory": "2025Q1",
+            "data": {
+                "freqCode": 172,
+                "startDate": "2025Q1",
+                "periods": 3,
+                "data": [3.5, 3.6, 3.7]
+            }
+        }
+    ]
+        return {}
 
 class ScenarioStudioAPI(BaseAPI):
     def __init__(self,acc_key:str,enc_key:str,oauth:bool = True,proxies={},debug:bool=False):
@@ -277,6 +285,8 @@ class ScenarioStudioAPI(BaseAPI):
         for i in range(0,len(series_list),batch):
             pl = series_list[i:i+batch]
             series_objs = self.request(url=url,method="post",payload=pl)
+            # What URL is being printed?
+            print("series_objs:", series_objs)
             for series_obj in series_objs:
                 if series_obj['status'].upper().strip() == 'OK':
                     pandas_freq = self.get_pandas_freq(series_obj['data']['freqCode'])
