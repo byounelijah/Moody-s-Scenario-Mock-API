@@ -1,19 +1,19 @@
 # Moody's Scenario Mock API
 
-A **mock implementation** of the Moody's Scenario Studio API, created to simulate and visualize economic scenario data wihtout requiring live API credentials.
-Built for learning, experiumentation, API integration, data processing, adn visualization skills.
+A **mock implementation** of the Moody's Scenario Studio API, created to simulate and visualize economic scenario data without requiring live API credentials.
+Built for learning, experimentation, API integration, data processing, and visualization skills.
 
 ## **Project Overview**
 - Connects to a mocked API-like interface for offline development
-- Worked with enpoints and Json responses
+- Worked with endpoints and JSON responses
 - Used pandas for data manipulation
 - Converted raw API data into Moody's style credit ratings (short-term and long-term specific ratings)
-- Mapped GDP and unemplopyment data to Moody's short and long term credit ratings
+- Mapped GDP and unemployment data to Moody's short and long term credit ratings
 
 ## **Skills Shown**
 - Python 3
 - Pandas (for data handling)
-- Matplotlib (scrapped in favour of cleaner output)
+- Matplotlib (scrapped in favor for cleaner output)
 - Mock API Design
 
 ## **How to Interpret Output**
